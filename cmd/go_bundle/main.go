@@ -10,10 +10,41 @@ import (
 	"log"
 )
 
-type visitedEmelements struct {
-	f map[ast.FuncDecl]bool
-	s map[ast.StructType]bool
-	v map[ast.Expr]bool
+type visitor struct {
+	// TODO Think if I need pointers, will pointer work correctly in my use case?
+	res *ast.File
+	f   map[*ast.FuncDecl]bool
+	pv  map[*ast.GenDecl]bool // package variables
+	s   map[*ast.StructType]bool
+	v   map[*ast.Expr]bool
+}
+
+func (v visitor) Visit(n ast.Node) ast.Visitor {
+	if n == nil {
+		return v
+	}
+
+	if c, ok := n.(*ast.CallExpr); ok {
+		fmt.Println(c)
+	}
+	s, ok := n.(*ast.SelectorExpr)
+	if !ok {
+		return v
+	}
+	x, okX := s.X.(*ast.Ident)
+	if !okX {
+		return v
+	}
+	// sel, okSel := s.Sel.(*ast.Ident)
+	// if !okSel {
+	// 	return v
+	// }
+	if x.Obj == nil {
+		fmt.Printf("need to get func %s in package %s\n", s.Sel, s.X)
+	} else {
+		fmt.Printf("need to get func %s on struct %s\n", s.Sel, s.X)
+	}
+	return v
 }
 
 func main() {
@@ -24,39 +55,34 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var mainFunc *ast.FuncDecl
+	var walkFunc *ast.FuncDecl
 	for _, f := range inFile.Decls {
 		fn, ok := f.(*ast.FuncDecl)
 		if !ok {
 			continue
 		}
 		if fn.Name.Name == "main" {
-			mainFunc = fn
+			walkFunc = fn
 		}
 	}
-	inFile.Decls = append(inFile.Decls, mainFunc)
+	inFile.Decls = append(inFile.Decls, walkFunc)
+	fmt.Println(astToString(inFile))
+
+	if walkFunc == nil {
+		log.Fatal("No main function found in file", fileName)
+	}
+	v := visitor{res: res}
+	ast.Walk(v, walkFunc)
+}
+
+func astToString(inFile ast.Node) string {
 	var buf bytes.Buffer
 	printConfig := &printer.Config{Mode: printer.TabIndent, Tabwidth: 8}
-	err = printConfig.Fprint(&buf, token.NewFileSet(), inFile)
+	err := printConfig.Fprint(&buf, token.NewFileSet(), inFile)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	fmt.Println(string(buf.Bytes()))
-	if mainFunc == nil {
-		log.Fatal("No main fucntion found in file", fileName)
-	}
-	visited := &visitedEmelements{
-		make(map[ast.FuncDecl]bool),
-		make(map[ast.StructType]bool),
-		make(map[ast.Expr]bool),
-	}
-	dfs(mainFunc, res, visited)
+	return buf.String()
 }
 
-func dfs(f *ast.FuncDecl, res *ast.File, visited *visitedEmelements) {
-	fmt.Printf("f.Name.Name = %+v\n", f.Name.Name)
-	for _, i := range f.Body.List {
-		fmt.Printf("i = %T\n", i)
-	}
-}
+// TODO Look how goimports add missing imports

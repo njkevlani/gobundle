@@ -3,34 +3,34 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"go/ast"
 	"go/parser"
 	"go/printer"
 	"go/token"
 	"log"
+
 	"os"
 	"path"
-	// "golang.org/x/tools/go/ast/astutil"
+
+	"golang.org/x/tools/imports"
 )
 
-// func getFuncNameWithPkg() {
-// 				if pkgIdent, ok := selectorExpr.X.(*ast.Ident); ok && pkgIdent.Name == "algo" {
-// 					editedFuName := ast.NewIdent(pkgIdent.Name + "_" + selectorExpr.Sel.Name)
-// 					callExpr.Fun = editedFuName
-// 					funcDefinition := v.getFuncDecl()
-// 					v.res.Decls = append(v.res.Decls, funcDefinition)
-// 				}
-// }
-
 type funcDeclCollectorVisitor struct {
+	curPkg      string
 	funcDeclMap map[string]*ast.FuncDecl
 }
 
 func (fv funcDeclCollectorVisitor) Visit(n ast.Node) ast.Visitor {
 	if n != nil {
 		if funcDecl, ok := n.(*ast.FuncDecl); ok {
-			spew.Dump(funcDecl)
+			editedFuncName := fmt.Sprintf("%s_%s", fv.curPkg, funcDecl.Name.Name)
+
+			if _, alreadyExists := fv.funcDeclMap[editedFuncName]; alreadyExists {
+				log.Fatalf("Function already exists in map. editedFuncName=%s\n", editedFuncName)
+			}
+
+			funcDecl.Name.Name = editedFuncName
+			fv.funcDeclMap[editedFuncName] = funcDecl
 		}
 	}
 
@@ -40,7 +40,7 @@ func (fv funcDeclCollectorVisitor) Visit(n ast.Node) ast.Visitor {
 type visitor struct {
 	// TODO Think if I need pointers, will pointer work correctly in my use case?
 	res *ast.File
-	f   map[*ast.FuncDecl]bool
+	f   map[string]bool
 	pv  map[*ast.GenDecl]bool // package variables
 	s   map[*ast.StructType]bool
 	v   map[*ast.Expr]bool
@@ -50,14 +50,17 @@ type visitor struct {
 func (v visitor) Visit(n ast.Node) ast.Visitor {
 	if n != nil {
 		if callExpr, ok := n.(*ast.CallExpr); ok {
-			spew.Dump(callExpr)
+			// spew.Dump(callExpr)
 			if selectorExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
 				// TODO: fix it. It will work only for "algo" package.
 				if pkgIdent, ok := selectorExpr.X.(*ast.Ident); ok && pkgIdent.Name == "algo" {
-					editedFuName := ast.NewIdent(pkgIdent.Name + "_" + selectorExpr.Sel.Name)
-					callExpr.Fun = editedFuName
-					funcDefinition := v.getFuncDecl()
-					v.res.Decls = append(v.res.Decls, funcDefinition)
+					editedFuncName := pkgIdent.Name + "_" + selectorExpr.Sel.Name
+					callExpr.Fun = ast.NewIdent(editedFuncName)
+
+					if !v.f[editedFuncName] {
+						v.res.Decls = append(v.res.Decls, v.fv.funcDeclMap[editedFuncName])
+						v.f[editedFuncName] = true
+					}
 				}
 			}
 		}
@@ -74,6 +77,19 @@ func (v visitor) getFuncDecl() *ast.FuncDecl {
 func main() {
 	if len(os.Args) <= 1 {
 		log.Fatalf("Arguments required")
+	}
+
+	pkgs, err := parser.ParseDir(token.NewFileSet(), "./test_files/algo", nil, parser.ParseComments)
+
+	fv := funcDeclCollectorVisitor{funcDeclMap: make(map[string]*ast.FuncDecl)}
+	if err != nil {
+		log.Fatal(err)
+	}
+	for pkgName, pkg := range pkgs {
+		for _, file := range pkg.Files {
+			fv.curPkg = pkgName
+			ast.Walk(fv, file)
+		}
 	}
 
 	fileName := path.Clean(os.Args[1])
@@ -113,24 +129,24 @@ func main() {
 	// inFile.Decls = append(inFile.Decls, walkFunc)
 	// fmt.Println(astToString(inFile))
 
-	var mainFunc *ast.FuncDecl
-	for _, f := range inFile.Decls {
-		fn, ok := f.(*ast.FuncDecl)
-		if !ok {
-			continue
-		}
-		if fn.Name.Name == "main" {
-			mainFunc = fn
-		}
-	}
+	// var mainFunc *ast.FuncDecl
+	// for _, f := range inFile.Decls {
+	// 	fn, ok := f.(*ast.FuncDecl)
+	// 	if !ok {
+	// 		continue
+	// 	}
+	// 	if fn.Name.Name == "main" {
+	// 		mainFunc = fn
+	// 	}
+	// }
 
-	if mainFunc == nil {
-		log.Fatal("No main function found in file", fileName)
-	}
+	// if mainFunc == nil {
+	// 	log.Fatal("No main function found in file", fileName)
+	// }
 
 	// res := &ast.File{}
 	// res.Decls = append(res.Decls, mainFunc)
-	v := visitor{res: inFile}
+	v := visitor{res: inFile, fv: &fv, f: make(map[string]bool)}
 	ast.Walk(v, inFile)
 
 	printConfig := &printer.Config{Mode: printer.TabIndent, Tabwidth: 1}
@@ -140,17 +156,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(buf.String())
-}
 
-func astToString(inFile ast.Node) string {
-	var buf bytes.Buffer
-	printConfig := &printer.Config{Mode: printer.TabIndent, Tabwidth: 8}
-	err := printConfig.Fprint(&buf, token.NewFileSet(), inFile)
+	bytes := buf.Bytes()
+	goimportedBytes, err := imports.Process("", bytes, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
-	return buf.String()
+	fmt.Println(string(goimportedBytes))
 }
-
-// TODO Look how goimports add missing imports

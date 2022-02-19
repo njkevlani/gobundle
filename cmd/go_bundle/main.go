@@ -8,12 +8,20 @@ import (
 	"go/printer"
 	"go/token"
 	"log"
+	"strings"
 
 	"os"
 	"path"
 
+	"golang.org/x/tools/go/packages"
 	"golang.org/x/tools/imports"
 )
+
+var standardPackages = make(map[string]bool)
+
+func isStdPkg(pkgName string) bool {
+	return !strings.Contains(pkgName, ".")
+}
 
 func getEditedFuncName(pkgName, funcName string) string {
 	if pkgName == "" {
@@ -56,8 +64,7 @@ func (v visitor) Visit(n ast.Node) ast.Visitor {
 	if n != nil {
 		if callExpr, ok := n.(*ast.CallExpr); ok {
 			if selectorExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
-				// TODO: fix it. It will work only for "algo" package.
-				if pkgIdent, ok := selectorExpr.X.(*ast.Ident); ok && pkgIdent.Name == "algo" {
+				if pkgIdent, ok := selectorExpr.X.(*ast.Ident); ok && !isStdPkg(pkgIdent.Name) {
 					editedFuncName := pkgIdent.Name + "_" + selectorExpr.Sel.Name
 					callExpr.Fun = ast.NewIdent(editedFuncName)
 
@@ -95,29 +102,54 @@ func (v visitor) Visit(n ast.Node) ast.Visitor {
 	return v
 }
 
+func getImportSpecs(f *ast.File) []*ast.ImportSpec {
+	var imports []*ast.ImportSpec
+
+	for _, decl := range f.Decls {
+		genDecl, ok := decl.(*ast.GenDecl)
+		if !ok || genDecl.Tok != token.IMPORT {
+			break
+		}
+
+		for _, spec := range genDecl.Specs {
+			importSpec := spec.(*ast.ImportSpec)
+			imports = append(imports, importSpec)
+		}
+	}
+
+	return imports
+}
+
 func main() {
 	if len(os.Args) <= 1 {
 		log.Fatalf("Arguments required")
-	}
-
-	// TODO: This is hardcoded. Need to fix.
-	pkgs, err := parser.ParseDir(token.NewFileSet(), "./test_files/algo", nil, parser.ParseComments)
-
-	fv := funcDeclCollectorVisitor{funcDeclMap: make(map[string]*ast.FuncDecl)}
-	if err != nil {
-		log.Fatal(err)
-	}
-	for pkgName, pkg := range pkgs {
-		for _, file := range pkg.Files {
-			fv.curPkg = pkgName
-			ast.Walk(fv, file)
-		}
 	}
 
 	fileName := path.Clean(os.Args[1])
 	inFile, err := parser.ParseFile(token.NewFileSet(), fileName, nil, parser.ParseComments)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	fv := funcDeclCollectorVisitor{funcDeclMap: make(map[string]*ast.FuncDecl)}
+
+	importSpecs := getImportSpecs(inFile)
+
+	for _, importSpec := range importSpecs {
+		pkgName := importSpec.Path.Value[1 : len(importSpec.Path.Value)-1]
+		if !isStdPkg(pkgName) {
+			pkgs, err := packages.Load(&packages.Config{Mode: packages.NeedSyntax}, pkgName)
+
+			if err != nil {
+				log.Fatal(err)
+			}
+			for _, pkg := range pkgs {
+				for _, file := range pkg.Syntax {
+					fv.curPkg = file.Name.Name
+					ast.Walk(fv, file)
+				}
+			}
+		}
 	}
 
 	fv.curPkg = ""

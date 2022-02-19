@@ -17,7 +17,7 @@ import (
 	"golang.org/x/tools/imports"
 )
 
-var standardPackages = make(map[string]bool)
+var fullPkgNames = make(map[string]string)
 
 func isStdPkg(pkgName string) bool {
 	return !strings.Contains(pkgName, ".")
@@ -64,7 +64,7 @@ func (v visitor) Visit(n ast.Node) ast.Visitor {
 	if n != nil {
 		if callExpr, ok := n.(*ast.CallExpr); ok {
 			if selectorExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
-				if pkgIdent, ok := selectorExpr.X.(*ast.Ident); ok && !isStdPkg(pkgIdent.Name) {
+				if pkgIdent, ok := selectorExpr.X.(*ast.Ident); ok && !isStdPkg(fullPkgNames[pkgIdent.Name]) {
 					editedFuncName := pkgIdent.Name + "_" + selectorExpr.Sel.Name
 					callExpr.Fun = ast.NewIdent(editedFuncName)
 
@@ -137,6 +137,13 @@ func main() {
 
 	for _, importSpec := range importSpecs {
 		pkgName := importSpec.Path.Value[1 : len(importSpec.Path.Value)-1]
+
+		if importSpec.Name != nil {
+			fullPkgNames[importSpec.Name.Name] = pkgName
+		} else {
+			pkgNameSplits := strings.Split(pkgName, "/")
+			fullPkgNames[pkgNameSplits[len(pkgNameSplits)-1]] = pkgName
+		}
 		if !isStdPkg(pkgName) {
 			pkgs, err := packages.Load(&packages.Config{Mode: packages.NeedSyntax}, pkgName)
 

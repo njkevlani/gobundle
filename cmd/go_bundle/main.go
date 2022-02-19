@@ -23,7 +23,10 @@ type funcDeclCollectorVisitor struct {
 func (fv funcDeclCollectorVisitor) Visit(n ast.Node) ast.Visitor {
 	if n != nil {
 		if funcDecl, ok := n.(*ast.FuncDecl); ok {
-			editedFuncName := fmt.Sprintf("%s_%s", fv.curPkg, funcDecl.Name.Name)
+			editedFuncName := funcDecl.Name.Name
+			if fv.curPkg != "" {
+				editedFuncName = fmt.Sprintf("%s_%s", fv.curPkg, funcDecl.Name.Name)
+			}
 
 			if _, alreadyExists := fv.funcDeclMap[editedFuncName]; alreadyExists {
 				log.Fatalf("Function already exists in map. editedFuncName=%s\n", editedFuncName)
@@ -62,6 +65,12 @@ func (v visitor) Visit(n ast.Node) ast.Visitor {
 						v.f[editedFuncName] = true
 					}
 				}
+			} else if ident, ok := callExpr.Fun.(*ast.Ident); ok {
+				funcName := ident.Name
+				if !v.f[funcName] {
+					v.res.Decls = append(v.res.Decls, v.fv.funcDeclMap[funcName])
+					v.f[funcName] = true
+				}
 			}
 		}
 	}
@@ -98,61 +107,30 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// spew.Dump(inFile)
+	fv.curPkg = ""
+	ast.Walk(fv, inFile)
 
-	// importList := astutil.Imports(token.NewFileSet(), inFile)
-	// spew.Dump(importList)
+	var mainFunc *ast.FuncDecl
+	for _, f := range inFile.Decls {
+		if fn, ok := f.(*ast.FuncDecl); ok && fn.Name.Name == "main" {
+			mainFunc = fn
+			break
+		}
+	}
 
-	// fmt.Println("decls")
-	// spew.Dump(inFile.Decls)
+	if mainFunc == nil {
+		log.Fatal("No main function found in file: ", fileName)
+	}
 
-	// var walkFunc *ast.FuncDecl
-
-	// for _, decl := range inFile.Decls {
-	// 	if fn, ok := decl.(*ast.FuncDecl); ok {
-	// 		if fn.Name.Name == "main" {
-	// 			fn.Name.Name = "lorem"
-	// 			// spew.Dump(fn.Body.List)
-	// 		}
-	// 		// TODO: Get callExpr out of this and mainupulate it.
-	// 		for _, statements := range fn.Body.List {
-	// 			if expStatement, ok := statements.(*ast.ExprStmt); ok {
-	// 				if callExpr, ok := expStatement.X.(*ast.CallExpr); ok {
-	// 					fmt.Println("CallExpr:")
-	// 					spew.Dump(callExpr)
-	// 				}
-	// 			}
-	// 		}
-	// 	}
-	// }
-
-	// inFile.Decls = append(inFile.Decls, walkFunc)
-	// fmt.Println(astToString(inFile))
-
-	// var mainFunc *ast.FuncDecl
-	// for _, f := range inFile.Decls {
-	// 	fn, ok := f.(*ast.FuncDecl)
-	// 	if !ok {
-	// 		continue
-	// 	}
-	// 	if fn.Name.Name == "main" {
-	// 		mainFunc = fn
-	// 	}
-	// }
-
-	// if mainFunc == nil {
-	// 	log.Fatal("No main function found in file", fileName)
-	// }
-
-	// res := &ast.File{}
-	// res.Decls = append(res.Decls, mainFunc)
-	v := visitor{res: inFile, fv: &fv, f: make(map[string]bool)}
-	ast.Walk(v, inFile)
+	res := &ast.File{Name: ast.NewIdent("main")}
+	res.Decls = append(res.Decls, mainFunc)
+	v := visitor{res: res, fv: &fv, f: make(map[string]bool)}
+	ast.Walk(v, res)
 
 	printConfig := &printer.Config{Mode: printer.TabIndent, Tabwidth: 1}
 
 	var buf bytes.Buffer
-	err = printConfig.Fprint(&buf, token.NewFileSet(), inFile)
+	err = printConfig.Fprint(&buf, token.NewFileSet(), res)
 	if err != nil {
 		log.Fatal(err)
 	}

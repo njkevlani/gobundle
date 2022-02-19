@@ -153,5 +153,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(string(goimportedBytes))
+
+	err = os.MkdirAll("./build", os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = os.WriteFile("./build/main.go", goimportedBytes, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
 }

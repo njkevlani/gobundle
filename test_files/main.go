@@ -14,6 +14,8 @@ func main() {
 	fmt.Println(s)
 
 	empty()
+
+  fmt.Println(algo.Square(2))
 }
 
 func empty() {

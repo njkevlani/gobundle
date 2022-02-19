@@ -15,6 +15,14 @@ import (
 	"golang.org/x/tools/imports"
 )
 
+func getEditedFuncName(pkgName, funcName string) string {
+	if pkgName == "" {
+		return funcName
+	}
+
+	return fmt.Sprintf("%s_%s", pkgName, funcName)
+}
+
 type funcDeclCollectorVisitor struct {
 	curPkg      string
 	funcDeclMap map[string]*ast.FuncDecl
@@ -23,10 +31,7 @@ type funcDeclCollectorVisitor struct {
 func (fv funcDeclCollectorVisitor) Visit(n ast.Node) ast.Visitor {
 	if n != nil {
 		if funcDecl, ok := n.(*ast.FuncDecl); ok {
-			editedFuncName := funcDecl.Name.Name
-			if fv.curPkg != "" {
-				editedFuncName = fmt.Sprintf("%s_%s", fv.curPkg, funcDecl.Name.Name)
-			}
+			editedFuncName := getEditedFuncName(fv.curPkg, funcDecl.Name.Name)
 
 			if _, alreadyExists := fv.funcDeclMap[editedFuncName]; alreadyExists {
 				log.Fatalf("Function already exists in map. editedFuncName=%s\n", editedFuncName)
@@ -42,12 +47,13 @@ func (fv funcDeclCollectorVisitor) Visit(n ast.Node) ast.Visitor {
 
 type visitor struct {
 	// TODO Think if I need pointers, will pointer work correctly in my use case?
-	res *ast.File
-	f   map[string]bool
-	pv  map[*ast.GenDecl]bool // package variables
-	s   map[*ast.StructType]bool
-	v   map[*ast.Expr]bool
-	fv  *funcDeclCollectorVisitor
+	res    *ast.File
+	f      map[string]bool
+	pv     map[*ast.GenDecl]bool // package variables
+	s      map[*ast.StructType]bool
+	v      map[*ast.Expr]bool
+	fv     *funcDeclCollectorVisitor
+	curPkg string
 }
 
 func (v visitor) Visit(n ast.Node) ast.Visitor {
@@ -61,15 +67,23 @@ func (v visitor) Visit(n ast.Node) ast.Visitor {
 					callExpr.Fun = ast.NewIdent(editedFuncName)
 
 					if !v.f[editedFuncName] {
-						v.res.Decls = append(v.res.Decls, v.fv.funcDeclMap[editedFuncName])
+						funcDecl := v.fv.funcDeclMap[editedFuncName]
+						v.res.Decls = append(v.res.Decls, funcDecl)
 						v.f[editedFuncName] = true
+						curPkg := v.curPkg
+						v.curPkg = pkgIdent.Name
+						ast.Walk(v, funcDecl)
+						v.curPkg = curPkg
 					}
 				}
 			} else if ident, ok := callExpr.Fun.(*ast.Ident); ok {
-				funcName := ident.Name
-				if !v.f[funcName] {
-					v.res.Decls = append(v.res.Decls, v.fv.funcDeclMap[funcName])
-					v.f[funcName] = true
+				editedFuncName := getEditedFuncName(v.curPkg, ident.Name)
+				ident.Name = editedFuncName
+				if !v.f[editedFuncName] {
+					funcDecl := v.fv.funcDeclMap[editedFuncName]
+					v.res.Decls = append(v.res.Decls, funcDecl)
+					v.f[editedFuncName] = true
+					ast.Walk(v, funcDecl)
 				}
 			}
 		}

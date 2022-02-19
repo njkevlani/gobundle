@@ -46,31 +46,30 @@ func (fv funcDeclCollectorVisitor) Visit(n ast.Node) ast.Visitor {
 }
 
 type visitor struct {
-	// TODO Think if I need pointers, will pointer work correctly in my use case?
-	res    *ast.File
-	f      map[string]bool
-	pv     map[*ast.GenDecl]bool // package variables
-	s      map[*ast.StructType]bool
-	v      map[*ast.Expr]bool
-	fv     *funcDeclCollectorVisitor
-	curPkg string
+	fv       *funcDeclCollectorVisitor
+	result   *ast.File
+	curPkg   string
+	doneFunc map[string]bool
 }
 
 func (v visitor) Visit(n ast.Node) ast.Visitor {
 	if n != nil {
 		if callExpr, ok := n.(*ast.CallExpr); ok {
-			// spew.Dump(callExpr)
 			if selectorExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
 				// TODO: fix it. It will work only for "algo" package.
 				if pkgIdent, ok := selectorExpr.X.(*ast.Ident); ok && pkgIdent.Name == "algo" {
 					editedFuncName := pkgIdent.Name + "_" + selectorExpr.Sel.Name
 					callExpr.Fun = ast.NewIdent(editedFuncName)
 
-					if !v.f[editedFuncName] {
+					if !v.doneFunc[editedFuncName] {
 						funcDecl := v.fv.funcDeclMap[editedFuncName]
-						v.res.Decls = append(v.res.Decls, funcDecl)
-						v.f[editedFuncName] = true
+
+						// Add this function in result.
+						v.result.Decls = append(v.result.Decls, funcDecl)
+						v.doneFunc[editedFuncName] = true
 						curPkg := v.curPkg
+
+						// recursively process this function.
 						v.curPkg = pkgIdent.Name
 						ast.Walk(v, funcDecl)
 						v.curPkg = curPkg
@@ -79,10 +78,14 @@ func (v visitor) Visit(n ast.Node) ast.Visitor {
 			} else if ident, ok := callExpr.Fun.(*ast.Ident); ok {
 				editedFuncName := getEditedFuncName(v.curPkg, ident.Name)
 				ident.Name = editedFuncName
-				if !v.f[editedFuncName] {
+				if !v.doneFunc[editedFuncName] {
 					funcDecl := v.fv.funcDeclMap[editedFuncName]
-					v.res.Decls = append(v.res.Decls, funcDecl)
-					v.f[editedFuncName] = true
+
+					// Add this function in result.
+					v.result.Decls = append(v.result.Decls, funcDecl)
+					v.doneFunc[editedFuncName] = true
+
+					// recursively process this function.
 					ast.Walk(v, funcDecl)
 				}
 			}
@@ -92,16 +95,12 @@ func (v visitor) Visit(n ast.Node) ast.Visitor {
 	return v
 }
 
-func (v visitor) getFuncDecl() *ast.FuncDecl {
-	// TODO: Get *ast.Package and do ast.Walk(pkg, v.fv)
-	return nil
-}
-
 func main() {
 	if len(os.Args) <= 1 {
 		log.Fatalf("Arguments required")
 	}
 
+	// TODO: This is hardcoded. Need to fix.
 	pkgs, err := parser.ParseDir(token.NewFileSet(), "./test_files/algo", nil, parser.ParseComments)
 
 	fv := funcDeclCollectorVisitor{funcDeclMap: make(map[string]*ast.FuncDecl)}
@@ -138,7 +137,7 @@ func main() {
 
 	res := &ast.File{Name: ast.NewIdent("main")}
 	res.Decls = append(res.Decls, mainFunc)
-	v := visitor{res: res, fv: &fv, f: make(map[string]bool)}
+	v := visitor{result: res, fv: &fv, doneFunc: make(map[string]bool)}
 	ast.Walk(v, res)
 
 	printConfig := &printer.Config{Mode: printer.TabIndent, Tabwidth: 1}

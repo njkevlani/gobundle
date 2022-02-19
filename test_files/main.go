@@ -13,7 +13,7 @@ func main() {
 	s := algo.Sum(input)
 	fmt.Println(s)
 
-  empty()
+	empty()
 }
 
 func empty() {

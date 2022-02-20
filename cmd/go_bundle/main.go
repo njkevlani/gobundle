@@ -193,6 +193,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	goimportedBytes = append([]byte("// Auto generated using https://github.com/njkevlani/go_bundle\n"), goimportedBytes...)
+
 	err = os.MkdirAll("./build", os.ModePerm)
 	if err != nil {
 		log.Fatal(err)

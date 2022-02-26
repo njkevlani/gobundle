@@ -1,4 +1,3 @@
-// Auto generated using https://github.com/njkevlani/go_bundle
 package main
 
 import "fmt"

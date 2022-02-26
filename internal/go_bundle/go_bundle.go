@@ -178,13 +178,5 @@ func GoBundle(fileName string) ([]byte, error) {
 		return nil, err
 	}
 
-	bytes := buf.Bytes()
-	goimportedBytes, err := imports.Process("", bytes, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	goimportedBytes = append([]byte("// Auto generated using https://github.com/njkevlani/go_bundle\n"), goimportedBytes...)
-
-	return goimportedBytes, nil
+	return imports.Process("", buf.Bytes(), nil)
 }

@@ -3,7 +3,7 @@ on: push
 jobs:
   test:
     runs-on: ubuntu-latest
-    container: golang:1.17-alpine
+    container: golang:1.17-bullseye
     steps:
       - uses: actions/checkout@v2
 

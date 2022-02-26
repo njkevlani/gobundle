@@ -13,3 +13,6 @@ test: build
 	./bin/go_bundle ./test_files/main.go
 	cat ./build/main.go
 	go run ./build/main.go
+
+install-in-gopath:
+	go install -ldflags "-s -w" cmd/go_bundle/main.go

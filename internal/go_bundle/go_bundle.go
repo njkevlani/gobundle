@@ -12,15 +12,12 @@ import (
 	"strings"
 
 	"github.com/njkevlani/go_bundle/internal/go_bundle/builtinfuncdetector"
+	"github.com/njkevlani/go_bundle/internal/go_bundle/stdpkgdetector"
 	"golang.org/x/tools/go/packages"
 	"golang.org/x/tools/imports"
 )
 
 var fullPkgNames = make(map[string]string)
-
-func isStdPkg(pkgName string) bool {
-	return !strings.Contains(pkgName, ".")
-}
 
 func getEditedFuncName(pkgName, funcName string) string {
 	if pkgName == "" {
@@ -63,7 +60,7 @@ func (v visitor) Visit(n ast.Node) ast.Visitor {
 	if n != nil {
 		if callExpr, ok := n.(*ast.CallExpr); ok {
 			if selectorExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
-				if pkgIdent, ok := selectorExpr.X.(*ast.Ident); ok && !isStdPkg(fullPkgNames[pkgIdent.Name]) && !builtinfuncdetector.IsBuiltinFunc(selectorExpr.Sel.Name) {
+				if pkgIdent, ok := selectorExpr.X.(*ast.Ident); ok && !stdpkgdetector.IsStdPkg(fullPkgNames[pkgIdent.Name]) && !builtinfuncdetector.IsBuiltinFunc(selectorExpr.Sel.Name) {
 					editedFuncName := pkgIdent.Name + "_" + selectorExpr.Sel.Name
 					callExpr.Fun = ast.NewIdent(editedFuncName)
 
@@ -138,7 +135,7 @@ func GoBundle(fileName string) ([]byte, error) {
 			pkgNameSplits := strings.Split(pkgName, "/")
 			fullPkgNames[pkgNameSplits[len(pkgNameSplits)-1]] = pkgName
 		}
-		if !isStdPkg(pkgName) {
+		if !stdpkgdetector.IsStdPkg(pkgName) {
 			pkgs, err := packages.Load(&packages.Config{Mode: packages.NeedSyntax}, pkgName)
 
 			if err != nil {

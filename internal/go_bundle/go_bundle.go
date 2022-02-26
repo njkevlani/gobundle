@@ -61,7 +61,7 @@ func (v visitor) Visit(n ast.Node) ast.Visitor {
 		if callExpr, ok := n.(*ast.CallExpr); ok {
 			if selectorExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
 				if pkgIdent, ok := selectorExpr.X.(*ast.Ident); ok && !stdpkgdetector.IsStdPkg(fullPkgNames[pkgIdent.Name]) && !builtinfuncdetector.IsBuiltinFunc(selectorExpr.Sel.Name) {
-					editedFuncName := pkgIdent.Name + "_" + selectorExpr.Sel.Name
+					editedFuncName := getEditedFuncName(pkgIdent.Name, selectorExpr.Sel.Name)
 					callExpr.Fun = ast.NewIdent(editedFuncName)
 
 					if !v.doneFunc[editedFuncName] {

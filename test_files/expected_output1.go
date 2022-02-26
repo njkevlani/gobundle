@@ -5,6 +5,7 @@ import "fmt"
 
 func main() {
 	input := []int{1, 2, 3, 4, 5, 2, 6}
+	input = append(input, 78)
 	fmt.Println("Sum =", algo_Sum(input))
 	s := algo_Sum(input)
 	fmt.Println(s)

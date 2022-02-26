@@ -11,6 +11,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/njkevlani/go_bundle/internal/go_bundle/builtinfuncdetector"
 	"golang.org/x/tools/go/packages"
 	"golang.org/x/tools/imports"
 )
@@ -62,7 +63,7 @@ func (v visitor) Visit(n ast.Node) ast.Visitor {
 	if n != nil {
 		if callExpr, ok := n.(*ast.CallExpr); ok {
 			if selectorExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
-				if pkgIdent, ok := selectorExpr.X.(*ast.Ident); ok && !isStdPkg(fullPkgNames[pkgIdent.Name]) {
+				if pkgIdent, ok := selectorExpr.X.(*ast.Ident); ok && !isStdPkg(fullPkgNames[pkgIdent.Name]) && !builtinfuncdetector.IsBuiltinFunc(selectorExpr.Sel.Name) {
 					editedFuncName := pkgIdent.Name + "_" + selectorExpr.Sel.Name
 					callExpr.Fun = ast.NewIdent(editedFuncName)
 
@@ -80,7 +81,7 @@ func (v visitor) Visit(n ast.Node) ast.Visitor {
 						v.curPkg = curPkg
 					}
 				}
-			} else if ident, ok := callExpr.Fun.(*ast.Ident); ok {
+			} else if ident, ok := callExpr.Fun.(*ast.Ident); ok && !builtinfuncdetector.IsBuiltinFunc(ident.Name) {
 				editedFuncName := getEditedFuncName(v.curPkg, ident.Name)
 				ident.Name = editedFuncName
 				if !v.doneFunc[editedFuncName] {

@@ -10,7 +10,7 @@ build:
 	go build -o bin/go_bundle cmd/go_bundle/main.go
 
 test: build
-	./bin/go_bundle ./test_files/main.go
+	./bin/go_bundle ./test_files/test_project1//main.go
 	cat ./build/main.go
 	go run ./build/main.go
 

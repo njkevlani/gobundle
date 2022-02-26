@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/njkevlani/go_bundle/test_files/algo"
+	"github.com/njkevlani/go_bundle/test_files/test_project1/algo"
 )
 
 func main() {
@@ -15,7 +15,7 @@ func main() {
 
 	empty()
 
-  fmt.Println(algo.Square(2))
+	fmt.Println(algo.Square(2))
 }
 
 func empty() {

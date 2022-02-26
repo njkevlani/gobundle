@@ -10,14 +10,14 @@ import (
 )
 
 func TestGoBundle(t *testing.T) {
-  fmt.Println(os.Getwd())
+	fmt.Println(os.Getwd())
 	testcases := []struct {
 		inputFilePath          string
 		expectedOutputFilePath string
 	}{
 		{
-			inputFilePath:          "./test_files/test_project1//main.go",
-			expectedOutputFilePath: "./test_files/expected_output1.go",
+			inputFilePath:          "../../test_files/test_project1//main.go",
+			expectedOutputFilePath: "../../test_files/expected_output1.go",
 		},
 	}
 
@@ -28,6 +28,6 @@ func TestGoBundle(t *testing.T) {
 		expectedOutput, err := os.ReadFile(testcase.expectedOutputFilePath)
 		assert.NoError(t, err)
 
-    assert.Equal(t, string(expectedOutput), string(output))
+		assert.Equal(t, string(expectedOutput), string(output))
 	}
 }

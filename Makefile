@@ -13,5 +13,6 @@ test:
 	./scripts/go-build-tests.sh
 	./scripts/go-run-tests.sh
 
-install-in-gopath:
-	go install -ldflags "-s -w" cmd/go_bundle/main.go
+install: build-release
+	mkdir -p ${GOPATH}/bin
+	cp ./bin/go_bundle ${GOPATH}/bin/

@@ -21,9 +21,9 @@ func algo_Sum(nums []int) int {
 func empty() {
 }
 func algo_Square(n int) int {
-	fmt.Println("square =", algo_Multiply(n, n))
-	return algo_Multiply(n, n)
+	fmt.Println("square =", algo2_Multiply(n, n))
+	return algo2_Multiply(n, n)
 }
-func algo_Multiply(x, y int) int {
+func algo2_Multiply(x, y int) int {
 	return x * y
 }

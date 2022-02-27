@@ -1,6 +1,10 @@
 package algo
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/njkevlani/go_bundle/test_files/test_project1/algo2"
+)
 
 func Sum(nums []int) int {
 	var ans int
@@ -11,11 +15,7 @@ func Sum(nums []int) int {
 	return ans
 }
 
-func Multiply(x, y int) int {
-	return x * y
-}
-
 func Square(n int) int {
-	fmt.Println("square =", Multiply(n, n))
-	return Multiply(n, n)
+	fmt.Println("square =", algo2.Multiply(n, n))
+	return algo2.Multiply(n, n)
 }

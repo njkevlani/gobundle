@@ -3,54 +3,19 @@ package go_bundle
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/printer"
 	"go/token"
-	"log"
-	"strings"
 
 	"github.com/njkevlani/go_bundle/internal/go_bundle/builtinfuncdetector"
+	"github.com/njkevlani/go_bundle/internal/go_bundle/collector"
 	"github.com/njkevlani/go_bundle/internal/go_bundle/stdpkgdetector"
 	"golang.org/x/tools/go/packages"
 	"golang.org/x/tools/imports"
 )
 
-var fullPkgNames = make(map[string]string)
-
-func getEditedFuncName(pkgName, funcName string) string {
-	if pkgName == "" {
-		return funcName
-	}
-
-	return fmt.Sprintf("%s_%s", pkgName, funcName)
-}
-
-type funcDeclCollectorVisitor struct {
-	curPkg      string
-	funcDeclMap map[string]*ast.FuncDecl
-}
-
-func (fv funcDeclCollectorVisitor) Visit(n ast.Node) ast.Visitor {
-	if n != nil {
-		if funcDecl, ok := n.(*ast.FuncDecl); ok {
-			editedFuncName := getEditedFuncName(fv.curPkg, funcDecl.Name.Name)
-
-			if _, alreadyExists := fv.funcDeclMap[editedFuncName]; alreadyExists {
-				log.Fatalf("Function already exists in map. editedFuncName=%s\n", editedFuncName)
-			}
-
-			funcDecl.Name.Name = editedFuncName
-			fv.funcDeclMap[editedFuncName] = funcDecl
-		}
-	}
-
-	return fv
-}
-
 type visitor struct {
-	fv       *funcDeclCollectorVisitor
 	result   *ast.File
 	curPkg   string
 	doneFunc map[string]bool
@@ -60,16 +25,16 @@ func (v visitor) Visit(n ast.Node) ast.Visitor {
 	if n != nil {
 		if callExpr, ok := n.(*ast.CallExpr); ok {
 			if selectorExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
-				if pkgIdent, ok := selectorExpr.X.(*ast.Ident); ok && !stdpkgdetector.IsStdPkg(fullPkgNames[pkgIdent.Name]) && !builtinfuncdetector.IsBuiltinFunc(selectorExpr.Sel.Name) {
-					editedFuncName := getEditedFuncName(pkgIdent.Name, selectorExpr.Sel.Name)
-					callExpr.Fun = ast.NewIdent(editedFuncName)
+				if pkgIdent, ok := selectorExpr.X.(*ast.Ident); ok && !stdpkgdetector.IsStdPkg(collector.GetFullPkgName(pkgIdent.Name)) && !builtinfuncdetector.IsBuiltinFunc(selectorExpr.Sel.Name) {
+					fi := collector.FuncIdentifier{PkgName: pkgIdent.Name, FuncName: selectorExpr.Sel.Name}
+					callExpr.Fun = ast.NewIdent(fi.String())
 
-					if !v.doneFunc[editedFuncName] {
-						funcDecl := v.fv.funcDeclMap[editedFuncName]
+					if !v.doneFunc[fi.String()] {
+						funcDecl := collector.GetFuncDecl(fi)
 
 						// Add this function in result.
 						v.result.Decls = append(v.result.Decls, funcDecl)
-						v.doneFunc[editedFuncName] = true
+						v.doneFunc[fi.String()] = true
 						curPkg := v.curPkg
 
 						// recursively process this function.
@@ -79,14 +44,14 @@ func (v visitor) Visit(n ast.Node) ast.Visitor {
 					}
 				}
 			} else if ident, ok := callExpr.Fun.(*ast.Ident); ok && !builtinfuncdetector.IsBuiltinFunc(ident.Name) {
-				editedFuncName := getEditedFuncName(v.curPkg, ident.Name)
-				ident.Name = editedFuncName
-				if !v.doneFunc[editedFuncName] {
-					funcDecl := v.fv.funcDeclMap[editedFuncName]
+				fi := collector.FuncIdentifier{PkgName: v.curPkg, FuncName: ident.Name}
+				ident.Name = fi.String()
+				if !v.doneFunc[fi.String()] {
+					funcDecl := collector.GetFuncDecl(fi)
 
 					// Add this function in result.
 					v.result.Decls = append(v.result.Decls, funcDecl)
-					v.doneFunc[editedFuncName] = true
+					v.doneFunc[fi.String()] = true
 
 					// recursively process this function.
 					ast.Walk(v, funcDecl)
@@ -98,60 +63,32 @@ func (v visitor) Visit(n ast.Node) ast.Visitor {
 	return v
 }
 
-func getImportSpecs(f *ast.File) []*ast.ImportSpec {
-	var imports []*ast.ImportSpec
-
-	for _, decl := range f.Decls {
-		genDecl, ok := decl.(*ast.GenDecl)
-		if !ok || genDecl.Tok != token.IMPORT {
-			break
-		}
-
-		for _, spec := range genDecl.Specs {
-			importSpec := spec.(*ast.ImportSpec)
-			imports = append(imports, importSpec)
-		}
-	}
-
-	return imports
-}
-
 func GoBundle(fileName string) ([]byte, error) {
 	inFile, err := parser.ParseFile(token.NewFileSet(), fileName, nil, parser.ParseComments)
 	if err != nil {
 		return nil, err
 	}
 
-	fv := funcDeclCollectorVisitor{funcDeclMap: make(map[string]*ast.FuncDecl)}
+	collector.PutInFileFuncDecls(inFile)
 
-	importSpecs := getImportSpecs(inFile)
+	importPkgs := collector.GetNonStdNonProcessedImports(inFile)
 
-	for _, importSpec := range importSpecs {
-		pkgName := importSpec.Path.Value[1 : len(importSpec.Path.Value)-1]
+	for len(importPkgs) != 0 {
+		pkgs, err := packages.Load(&packages.Config{Mode: packages.NeedSyntax}, importPkgs...)
 
-		if importSpec.Name != nil {
-			fullPkgNames[importSpec.Name.Name] = pkgName
-		} else {
-			pkgNameSplits := strings.Split(pkgName, "/")
-			fullPkgNames[pkgNameSplits[len(pkgNameSplits)-1]] = pkgName
+		if err != nil {
+			return nil, err
 		}
-		if !stdpkgdetector.IsStdPkg(pkgName) {
-			pkgs, err := packages.Load(&packages.Config{Mode: packages.NeedSyntax}, pkgName)
 
-			if err != nil {
-				return nil, err
-			}
-			for _, pkg := range pkgs {
-				for _, file := range pkg.Syntax {
-					fv.curPkg = file.Name.Name
-					ast.Walk(fv, file)
-				}
+		collector.PutFuncDecls(pkgs...)
+
+		importPkgs = nil
+		for _, pkg := range pkgs {
+			for _, file := range pkg.Syntax {
+				importPkgs = append(importPkgs, collector.GetNonStdNonProcessedImports(file)...)
 			}
 		}
 	}
-
-	fv.curPkg = ""
-	ast.Walk(fv, inFile)
 
 	var mainFunc *ast.FuncDecl
 	for _, f := range inFile.Decls {
@@ -167,7 +104,7 @@ func GoBundle(fileName string) ([]byte, error) {
 
 	res := &ast.File{Name: ast.NewIdent("main")}
 	res.Decls = append(res.Decls, mainFunc)
-	v := visitor{result: res, fv: &fv, doneFunc: make(map[string]bool)}
+	v := visitor{result: res, doneFunc: make(map[string]bool)}
 	ast.Walk(v, res)
 
 	printConfig := &printer.Config{Mode: printer.TabIndent, Tabwidth: 1}

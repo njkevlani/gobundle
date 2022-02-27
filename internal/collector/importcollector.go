@@ -5,7 +5,7 @@ import (
 	"go/token"
 	"strings"
 
-	"github.com/njkevlani/go_bundle/internal/go_bundle/stdpkgdetector"
+	"github.com/njkevlani/go_bundle/internal/stdpkgdetector"
 )
 
 var fullPkgNames = make(map[string]string)

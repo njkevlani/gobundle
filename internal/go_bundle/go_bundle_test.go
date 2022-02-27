@@ -1,11 +1,10 @@
-package go_bundle_test
+package go_bundle
 
 import (
 	"fmt"
 	"os"
 	"testing"
 
-	"github.com/njkevlani/go_bundle/internal/go_bundle"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,7 +21,7 @@ func TestGoBundle(t *testing.T) {
 	}
 
 	for _, testcase := range testcases {
-		output, err := go_bundle.GoBundle(testcase.inputFilePath)
+		output, err := GoBundle(testcase.inputFilePath)
 		assert.NoError(t, err)
 
 		expectedOutput, err := os.ReadFile(testcase.expectedOutputFilePath)

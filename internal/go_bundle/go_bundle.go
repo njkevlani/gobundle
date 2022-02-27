@@ -8,9 +8,9 @@ import (
 	"go/printer"
 	"go/token"
 
-	"github.com/njkevlani/go_bundle/internal/go_bundle/builtinfuncdetector"
-	"github.com/njkevlani/go_bundle/internal/go_bundle/collector"
-	"github.com/njkevlani/go_bundle/internal/go_bundle/stdpkgdetector"
+	"github.com/njkevlani/go_bundle/internal/builtinfuncdetector"
+	"github.com/njkevlani/go_bundle/internal/collector"
+	"github.com/njkevlani/go_bundle/internal/stdpkgdetector"
 	"golang.org/x/tools/go/packages"
 	"golang.org/x/tools/imports"
 )

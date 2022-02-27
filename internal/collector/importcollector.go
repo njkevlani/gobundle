@@ -25,6 +25,7 @@ func GetNonStdNonProcessedImports(f *ast.File) []string {
 
 			fullImportPath := importSpec.Path.Value[1 : len(importSpec.Path.Value)-1]
 
+			// TODO: fullPkgName depends on which file we are talking about.
 			if importSpec.Name != nil {
 				fullPkgNames[importSpec.Name.Name] = fullImportPath
 			} else {

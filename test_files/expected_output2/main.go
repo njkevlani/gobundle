@@ -2,8 +2,6 @@ package main
 
 import "fmt"
 
-type lorem struct{}
-
 func main() {
 	tmp := lorem{}
 	fmt.Println(tmp)
@@ -20,6 +18,7 @@ func main() {
 	fmt.Println("BST had 99 =", bsTree.Has(99))
 }
 
+type lorem struct{}
 type bst_BST struct {
 	Value int
 	Left  *bst_BST
@@ -41,7 +40,6 @@ func (bst *bst_BST) Add(val int) {
 		}
 	}
 }
-
 func (bst bst_BST) Has(val int) bool {
 	if bst.Value == val {
 		return true
@@ -50,6 +48,5 @@ func (bst bst_BST) Has(val int) bool {
 	} else if bst.Right != nil && bst.Value < val {
 		return bst.Right.Has(val)
 	}
-
 	return false
 }

@@ -16,7 +16,7 @@ func TestGoBundle(t *testing.T) {
 	}{
 		{
 			inputFilePath:          "../../test_files/test_project1//main.go",
-			expectedOutputFilePath: "../../test_files/expected_output1.go",
+			expectedOutputFilePath: "../../test_files/expected_output1/main.go",
 		},
 	}
 

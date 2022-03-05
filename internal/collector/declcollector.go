@@ -108,7 +108,7 @@ func (fv funcDeclCollectorVisitor) Visit(n ast.Node) ast.Visitor {
 	return fv
 }
 
-func PutFuncDecls(pkgs ...*packages.Package) {
+func CollectDecls(pkgs ...*packages.Package) {
 	fv := funcDeclCollectorVisitor{funcDeclMap: funcDecls, genDeclMap: genDecls}
 
 	for _, pkg := range pkgs {
@@ -119,9 +119,9 @@ func PutFuncDecls(pkgs ...*packages.Package) {
 	}
 }
 
-func PutInFileFuncDecls(inFile *ast.File) {
+func CollectFileDecls(file *ast.File) {
 	fv := funcDeclCollectorVisitor{funcDeclMap: funcDecls, genDeclMap: genDecls}
-	ast.Walk(fv, inFile)
+	ast.Walk(fv, file)
 }
 
 func GetFuncDecl(fi FuncIdentifier) *ast.FuncDecl {

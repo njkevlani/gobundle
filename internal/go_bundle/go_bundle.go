@@ -15,13 +15,13 @@ import (
 	"github.com/njkevlani/go_bundle/internal/resultmaker"
 )
 
-func GoBundle(fileName string) ([]byte, error) {
-	inFile, err := parser.ParseFile(token.NewFileSet(), fileName, nil, parser.ParseComments)
+func GoBundle(filepath string) ([]byte, error) {
+	inFile, err := parser.ParseFile(token.NewFileSet(), filepath, nil, parser.ParseComments)
 	if err != nil {
 		return nil, err
 	}
 
-	collector.PutInFileFuncDecls(inFile)
+	collector.CollectFileDecls(inFile)
 
 	importPkgs := collector.GetNonStdNonProcessedImports(inFile)
 
@@ -32,7 +32,7 @@ func GoBundle(fileName string) ([]byte, error) {
 			return nil, err
 		}
 
-		collector.PutFuncDecls(pkgs...)
+		collector.CollectDecls(pkgs...)
 
 		importPkgs = nil
 		for _, pkg := range pkgs {
@@ -51,7 +51,7 @@ func GoBundle(fileName string) ([]byte, error) {
 	}
 
 	if mainFunc == nil {
-		return nil, errors.New("No main function found in file: " + fileName)
+		return nil, errors.New("No main function found in file: " + filepath)
 	}
 
 	res := &ast.File{Name: ast.NewIdent("main")}

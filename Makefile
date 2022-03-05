@@ -1,7 +1,7 @@
 .PHONY: build
 
 clean:
-	rm -r ./bin ./build
+	rm -rf ./bin ./build
 
 build-release:
 	go build -o bin/go_bundle -ldflags "-s -w" cmd/go_bundle/main.go

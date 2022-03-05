@@ -8,10 +8,11 @@ import (
 	"go/printer"
 	"go/token"
 
-	"github.com/njkevlani/go_bundle/internal/collector"
-	"github.com/njkevlani/go_bundle/internal/resultmaker"
 	"golang.org/x/tools/go/packages"
 	"golang.org/x/tools/imports"
+
+	"github.com/njkevlani/go_bundle/internal/collector"
+	"github.com/njkevlani/go_bundle/internal/resultmaker"
 )
 
 func GoBundle(fileName string) ([]byte, error) {

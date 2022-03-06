@@ -6,16 +6,10 @@ func main() {
 	tmp := lorem{}
 	fmt.Println(tmp)
 	bsTree := &BST{Value: 5}
-	bsTree.Add(4)
-	bsTree.Add(6)
-	bsTree.Add(3)
-	bsTree.Add(7)
-	bsTree.Add(2)
-	bsTree.Add(8)
-	bsTree.Add(1)
-	bsTree.Add(9)
+	addInBst(bsTree, []int{4, 6, 3, 7, 2, 8, 1, 9})
 	fmt.Println("BST had 9 =", bsTree.Has(9))
 	fmt.Println("BST had 99 =", bsTree.Has(99))
+	printBst(*bsTree)
 }
 
 type lorem struct{}
@@ -25,6 +19,11 @@ type BST struct {
 	Right *BST
 }
 
+func addInBst(bsTreeFuncParam *BST, arr []int) {
+	for _, el := range arr {
+		bsTreeFuncParam.Add(el)
+	}
+}
 func (bst *BST) Add(val int) {
 	if bst.Value >= val {
 		if bst.Left == nil {
@@ -49,4 +48,7 @@ func (bst BST) Has(val int) bool {
 		return bst.Right.Has(val)
 	}
 	return false
+}
+func printBst(bsTreeFuncParam BST) {
+	fmt.Println(bsTreeFuncParam)
 }

@@ -5,13 +5,13 @@ import "fmt"
 func main() {
 	input := []int{1, 2, 3, 4, 5, 2, 6}
 	input = append(input, 78)
-	fmt.Println("Sum =", algo_Sum(input))
-	s := algo_Sum(input)
+	fmt.Println("Sum =", Sum(input))
+	s := Sum(input)
 	fmt.Println(s)
 	empty()
-	fmt.Println(algo_Square(2))
+	fmt.Println(Square(2))
 }
-func algo_Sum(nums []int) int {
+func Sum(nums []int) int {
 	var ans int
 	for _, el := range nums {
 		ans += el
@@ -20,10 +20,10 @@ func algo_Sum(nums []int) int {
 }
 func empty() {
 }
-func algo_Square(n int) int {
-	fmt.Println("square =", algo2_Multiply(n, n))
-	return algo2_Multiply(n, n)
+func Square(n int) int {
+	fmt.Println("square =", Multiply(n, n))
+	return Multiply(n, n)
 }
-func algo2_Multiply(x, y int) int {
+func Multiply(x, y int) int {
 	return x * y
 }

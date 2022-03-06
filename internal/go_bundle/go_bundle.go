@@ -16,28 +16,38 @@ import (
 )
 
 func GoBundle(filepath string) ([]byte, error) {
-	inFile, err := parser.ParseFile(token.NewFileSet(), filepath, nil, parser.ParseComments)
+	fileset := token.NewFileSet()
+	inFile, err := parser.ParseFile(fileset, filepath, nil, parser.ParseComments)
 	if err != nil {
 		return nil, err
 	}
 
-	collector.CollectFileDecls(inFile)
+	importCollector := collector.NewImportCollector()
 
-	importPkgs := collector.GetNonStdNonProcessedImports(inFile)
+	declCollector := collector.NewDeclCollector()
+
+	declCollector.CollectFileDecls(inFile, inFile.Name.Name, filepath)
+
+	importPkgs := importCollector.GetNonStdNonProcessedImports(inFile, inFile.Name.Name, filepath)
 
 	for len(importPkgs) != 0 {
-		pkgs, err := packages.Load(&packages.Config{Mode: packages.NeedSyntax}, importPkgs...)
+		pkgs, err := packages.Load(&packages.Config{Mode: packages.NeedFiles}, importPkgs...)
 
 		if err != nil {
 			return nil, err
 		}
 
-		collector.CollectDecls(pkgs...)
-
 		importPkgs = nil
 		for _, pkg := range pkgs {
-			for _, file := range pkg.Syntax {
-				importPkgs = append(importPkgs, collector.GetNonStdNonProcessedImports(file)...)
+			for _, pkgFilepath := range pkg.GoFiles {
+				file, err := parser.ParseFile(fileset, pkgFilepath, nil, parser.ParseComments)
+				if err != nil {
+					return nil, err
+				}
+
+				declCollector.CollectFileDecls(file, pkg.ID, pkgFilepath)
+
+				importPkgs = append(importPkgs, importCollector.GetNonStdNonProcessedImports(file, pkg.ID, pkgFilepath)...)
 			}
 		}
 	}
@@ -57,7 +67,7 @@ func GoBundle(filepath string) ([]byte, error) {
 	res := &ast.File{Name: ast.NewIdent("main")}
 	res.Decls = append(res.Decls, mainFunc)
 
-	resultmaker.MakeResult(res)
+	resultmaker.MakeResult(res, mainFunc, importCollector, declCollector, inFile.Name.Name, filepath)
 
 	printConfig := &printer.Config{Mode: printer.TabIndent, Tabwidth: 1}
 
@@ -68,4 +78,5 @@ func GoBundle(filepath string) ([]byte, error) {
 	}
 
 	return imports.Process("", buf.Bytes(), nil)
+	// return []byte{}, nil
 }

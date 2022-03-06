@@ -1,18 +1,38 @@
 package collector
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
 	"strings"
 
+	"github.com/davecgh/go-spew/spew"
+
 	"github.com/njkevlani/go_bundle/internal/stdpkgdetector"
 )
 
-var fullPkgNames = make(map[string]string)
-var importProcessed = make(map[string]bool)
+type ImportCollector struct {
+	fullPkgNames    map[string]map[string]map[string]string
+	importProcessed map[string]bool
+}
 
-func GetNonStdNonProcessedImports(f *ast.File) []string {
+func NewImportCollector() *ImportCollector {
+	return &ImportCollector{
+		fullPkgNames:    make(map[string]map[string]map[string]string),
+		importProcessed: make(map[string]bool),
+	}
+}
+
+func (ic *ImportCollector) GetNonStdNonProcessedImports(f *ast.File, fullPkgName, filepath string) []string {
 	var imports []string
+
+	if _, exists := ic.fullPkgNames[fullPkgName]; !exists {
+		ic.fullPkgNames[fullPkgName] = make(map[string]map[string]string)
+	}
+
+	if _, exists := ic.fullPkgNames[fullPkgName][filepath]; !exists {
+		ic.fullPkgNames[fullPkgName][filepath] = make(map[string]string)
+	}
 
 	for _, decl := range f.Decls {
 		genDecl, ok := decl.(*ast.GenDecl)
@@ -25,17 +45,16 @@ func GetNonStdNonProcessedImports(f *ast.File) []string {
 
 			fullImportPath := importSpec.Path.Value[1 : len(importSpec.Path.Value)-1]
 
-			// TODO: fullPkgName depends on which file we are talking about.
 			if importSpec.Name != nil {
-				fullPkgNames[importSpec.Name.Name] = fullImportPath
+				ic.fullPkgNames[fullPkgName][filepath][importSpec.Name.Name] = fullImportPath
 			} else {
 				pkgNameSplits := strings.Split(fullImportPath, "/")
-				fullPkgNames[pkgNameSplits[len(pkgNameSplits)-1]] = fullImportPath
+				ic.fullPkgNames[fullPkgName][filepath][pkgNameSplits[len(pkgNameSplits)-1]] = fullImportPath
 			}
 
-			if !stdpkgdetector.IsStdPkg(fullImportPath) && !importProcessed[fullImportPath] {
+			if !stdpkgdetector.IsStdPkg(fullImportPath) && !ic.importProcessed[fullImportPath] {
 				imports = append(imports, fullImportPath)
-				importProcessed[fullImportPath] = true
+				ic.importProcessed[fullImportPath] = true
 			}
 		}
 	}
@@ -43,6 +62,19 @@ func GetNonStdNonProcessedImports(f *ast.File) []string {
 	return imports
 }
 
-func GetFullPkgName(pkgName string) string {
-	return fullPkgNames[pkgName]
+func (ic *ImportCollector) GetFullPkgName(pkgName, filepath, shortPkgName string) string {
+	if ic.fullPkgNames[pkgName] == nil ||
+		ic.fullPkgNames[pkgName][filepath] == nil ||
+		ic.fullPkgNames[pkgName][filepath][shortPkgName] == "" {
+		panic(fmt.Sprintf(
+			"Could not get fullPkgName. pkgName=%s filepath=%s shortPkgName=%s\n", pkgName, filepath, shortPkgName,
+		))
+	}
+
+	return ic.fullPkgNames[pkgName][filepath][shortPkgName]
+}
+
+func (ic *ImportCollector) Debug() {
+	fmt.Println("fullPkgNames:")
+	spew.Dump(ic.fullPkgNames)
 }

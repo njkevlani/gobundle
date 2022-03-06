@@ -3,131 +3,151 @@ package collector
 import (
 	"fmt"
 	"go/ast"
+	"go/token"
 
-	"golang.org/x/tools/go/packages"
+	"github.com/davecgh/go-spew/spew"
 )
 
-var funcDecls = make(map[string]*ast.FuncDecl)
-var genDecls = make(map[string]*ast.GenDecl)
+type declType int
 
-type FuncIdentifier struct {
-	FuncName   string
-	StructName string
-	PkgName    string
+const (
+	funcType declType = iota
+	funcOnStructType
+	structType
+)
+
+type DeclIdentifier struct {
+	FuncName    string
+	StructName  string
+	FullPkgName string
+	Filepath    string
 }
 
-func (fi FuncIdentifier) EditedFuncName() string {
-	if fi.StructName != "" {
-		return fi.FuncName
-	}
-
-	if fi.PkgName == "" {
-		return fi.FuncName
-	}
-
-	return fmt.Sprintf("%s_%s", fi.PkgName, fi.FuncName)
+type DeclCollector struct {
+	decls       map[string]ast.Decl
+	editedNames map[string]string
+	usedNames   map[string]bool
+	declFileMap map[string]string
 }
 
-func (fi FuncIdentifier) EditedStructName() string {
-	if fi.PkgName == "" {
-		return fi.StructName
+func NewDeclCollector() *DeclCollector {
+	return &DeclCollector{
+		decls:       make(map[string]ast.Decl),
+		editedNames: make(map[string]string),
+		usedNames:   make(map[string]bool),
+		declFileMap: make(map[string]string),
 	}
-
-	return fmt.Sprintf("%s_%s", fi.PkgName, fi.StructName)
 }
 
-func (fi FuncIdentifier) DeclKey() string {
-	return fi.PkgName + "_" + fi.StructName + "_" + fi.FuncName
+func (dc *DeclCollector) EditedFuncName(fi DeclIdentifier) string {
+	return dc.editedNames[fi.DeclKey()]
+}
+
+func (di DeclIdentifier) DeclKey() string {
+	return fmt.Sprintf("%s_%s_%s", di.FullPkgName, di.StructName, di.FuncName)
+}
+
+func (dc *DeclCollector) putEditedFuncName(fi DeclIdentifier, dt declType) {
+	switch dt {
+	case funcOnStructType:
+		dc.editedNames[fi.DeclKey()] = fi.FuncName
+	case funcType:
+		funcName := fi.FuncName
+		i := 1
+		for dc.usedNames[funcName] {
+			i++
+			funcName = fmt.Sprintf("%s%d", fi.FuncName, i)
+		}
+
+		dc.usedNames[funcName] = true
+		dc.editedNames[fi.DeclKey()] = funcName
+	case structType:
+		structName := fi.StructName
+		i := 1
+		for dc.usedNames[structName] {
+			i++
+			structName = fmt.Sprintf("%s%d", fi.StructName, i)
+		}
+
+		dc.usedNames[structName] = true
+		dc.editedNames[fi.DeclKey()] = structName
+	}
+}
+
+func (dc *DeclCollector) EditedStructName(fi DeclIdentifier) string {
+	return dc.editedNames[fi.DeclKey()]
 }
 
 type funcDeclCollectorVisitor struct {
-	curPkg      string
-	funcDeclMap map[string]*ast.FuncDecl
-	genDeclMap  map[string]*ast.GenDecl
+	curFullPkgName string
+	curFilepath    string
+	declMap        map[string]ast.Decl
+	c              *DeclCollector
 }
 
 func (fv funcDeclCollectorVisitor) Visit(n ast.Node) ast.Visitor {
 	if n != nil {
 		if funcDecl, ok := n.(*ast.FuncDecl); ok {
-			fi := FuncIdentifier{PkgName: fv.curPkg, FuncName: funcDecl.Name.Name}
+			dt := funcType
+			di := DeclIdentifier{FuncName: funcDecl.Name.Name, FullPkgName: fv.curFullPkgName, Filepath: fv.curFilepath}
 			if funcDecl.Recv != nil && len(funcDecl.Recv.List) == 1 {
 				receiver := funcDecl.Recv.List[0]
 				if starExpr, ok := receiver.Type.(*ast.StarExpr); ok {
 					if ident, ok := starExpr.X.(*ast.Ident); ok {
-						fi.StructName = ident.Name
-						ident.Name = fi.EditedStructName()
+						di.StructName = ident.Name
+						dt = funcOnStructType
 					}
 				} else if ident, ok := receiver.Type.(*ast.Ident); ok {
-					fi.StructName = ident.Name
-					ident.Name = fi.EditedStructName()
+					di.StructName = ident.Name
+					dt = funcOnStructType
 				}
 			}
 
-			funcDecl.Name.Name = fi.EditedFuncName()
-
-			fv.funcDeclMap[fi.DeclKey()] = funcDecl
-		} else if genDecl, ok := n.(*ast.GenDecl); ok && len(genDecl.Specs) == 1 {
-			if typeSpec, ok := genDecl.Specs[0].(*ast.TypeSpec); ok {
-				fi := FuncIdentifier{PkgName: fv.curPkg, StructName: typeSpec.Name.Name}
-				typeSpec.Name.Name = fi.EditedStructName()
-
-				if structType, ok := typeSpec.Type.(*ast.StructType); ok {
-					for _, field := range structType.Fields.List {
-						if starExpr, ok := field.Type.(*ast.StarExpr); ok {
-							// TODO: This will only work for renaming self reference in struct member.
-							if ident, ok := starExpr.X.(*ast.Ident); ok && ident.Name == fi.StructName {
-								ident.Name = fi.EditedStructName()
-							}
-						}
-					}
-				}
-
-				// No need to recursively get all the structs because we will get all the things from this import + recursive imports
-				// But this is not great, because it will not work when struct a depends on struct b and we load struct a before b
-
-				fv.genDeclMap[fi.DeclKey()] = genDecl
+			fv.c.decls[di.DeclKey()] = funcDecl
+			fv.c.declFileMap[di.DeclKey()] = fv.curFilepath
+			fv.c.putEditedFuncName(di, dt)
+		} else if genDecl, ok := n.(*ast.GenDecl); ok && genDecl.Tok == token.TYPE {
+			di := DeclIdentifier{
+				StructName:  genDecl.Specs[0].(*ast.TypeSpec).Name.Name,
+				FullPkgName: fv.curFullPkgName,
+				Filepath:    fv.curFilepath,
 			}
-		} else if assignStmt, ok := n.(*ast.AssignStmt); ok {
-			for _, expr := range assignStmt.Rhs {
-				if unaryExpr, ok := expr.(*ast.UnaryExpr); ok {
-					if compositeLit, ok := unaryExpr.X.(*ast.CompositeLit); ok {
-						if ident, ok := compositeLit.Type.(*ast.Ident); ok {
-							fi := FuncIdentifier{PkgName: fv.curPkg, StructName: ident.Name}
 
-							if _, ok := fv.genDeclMap[fi.DeclKey()]; ok {
-								ident.Name = fi.EditedStructName()
-							}
-						}
-					}
-				}
-
-			}
+			fv.c.decls[di.DeclKey()] = genDecl
+			fv.c.declFileMap[di.DeclKey()] = fv.curFilepath
+			fv.c.putEditedFuncName(di, structType)
 		}
 	}
 
 	return fv
 }
 
-func CollectDecls(pkgs ...*packages.Package) {
-	fv := funcDeclCollectorVisitor{funcDeclMap: funcDecls, genDeclMap: genDecls}
-
-	for _, pkg := range pkgs {
-		for _, file := range pkg.Syntax {
-			fv.curPkg = file.Name.Name
-			ast.Walk(fv, file)
-		}
+func (dc *DeclCollector) CollectFileDecls(file *ast.File, fullPkgName, filepath string) {
+	fv := funcDeclCollectorVisitor{
+		curFullPkgName: fullPkgName,
+		curFilepath:    filepath,
+		c:              dc,
 	}
-}
-
-func CollectFileDecls(file *ast.File) {
-	fv := funcDeclCollectorVisitor{funcDeclMap: funcDecls, genDeclMap: genDecls}
 	ast.Walk(fv, file)
 }
 
-func GetFuncDecl(fi FuncIdentifier) *ast.FuncDecl {
-	return funcDecls[fi.DeclKey()]
+func (dc *DeclCollector) GetDecl(di DeclIdentifier) ast.Decl {
+	return dc.decls[di.DeclKey()]
 }
 
-func GetGenDecl(fi FuncIdentifier) *ast.GenDecl {
-	return genDecls[fi.DeclKey()]
+func (dc *DeclCollector) GetDeclFilepath(di DeclIdentifier) string {
+	return dc.declFileMap[di.DeclKey()]
+}
+
+func (dc *DeclCollector) Debug() {
+	fmt.Println("editedNames:")
+	spew.Dump(dc.editedNames)
+
+	fmt.Println("declFileMap:")
+	spew.Dump(dc.declFileMap)
+
+	fmt.Println("decl keys:")
+	for key := range dc.decls {
+		fmt.Println(key)
+	}
 }

@@ -111,7 +111,7 @@ func (v *visitor) handleCallerExpr(callExpr *ast.CallExpr) {
 						if selectorExpr, ok := starExpr.X.(*ast.SelectorExpr); ok {
 							funcFieldDi.StructName = selectorExpr.Sel.Name
 							if ident, ok := selectorExpr.X.(*ast.Ident); ok {
-								funcFieldDi.FullPkgName = v.ic.GetFullPkgName(curFullPkgName, curFilepath, ident.Name)
+								funcFieldDi.FullPkgName = v.ic.GetFullPkgName(v.curFullPkgName, v.curFilepath, ident.Name)
 							}
 						}
 						starExpr.X = ast.NewIdent(v.dc.EditedStructName(funcFieldDi))

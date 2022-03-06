@@ -132,10 +132,10 @@ func (v *visitor) handleCallerExpr(callExpr *ast.CallExpr) {
 							funcFieldDi.StructName = selectorExpr.Sel.Name
 							if ident, ok := selectorExpr.X.(*ast.Ident); ok {
 								funcFieldDi.FullPkgName = v.ic.GetFullPkgName(v.curFullPkgName, v.curFilepath, ident.Name)
+								if !stdpkgdetector.IsStdPkg(funcFieldDi.FullPkgName) {
+									starExpr.X = ast.NewIdent(v.dc.EditedStructName(funcFieldDi))
+								}
 							}
-						}
-						if !stdpkgdetector.IsStdPkg(funcFieldDi.FullPkgName) {
-							starExpr.X = ast.NewIdent(v.dc.EditedStructName(funcFieldDi))
 						}
 					} else if selectorExpr, ok := field.Type.(*ast.SelectorExpr); ok {
 						funcFieldDi.StructName = selectorExpr.Sel.Name
@@ -184,10 +184,10 @@ func (v *visitor) handleCallerExpr(callExpr *ast.CallExpr) {
 						funcFieldDi.StructName = selectorExpr.Sel.Name
 						if ident, ok := selectorExpr.X.(*ast.Ident); ok {
 							funcFieldDi.FullPkgName = v.ic.GetFullPkgName(v.curFullPkgName, v.curFilepath, ident.Name)
+							if !stdpkgdetector.IsStdPkg(funcFieldDi.FullPkgName) {
+								starExpr.X = ast.NewIdent(v.dc.EditedStructName(funcFieldDi))
+							}
 						}
-					}
-					if !stdpkgdetector.IsStdPkg(funcFieldDi.FullPkgName) {
-						starExpr.X = ast.NewIdent(v.dc.EditedStructName(funcFieldDi))
 					}
 				} else if selectorExpr, ok := field.Type.(*ast.SelectorExpr); ok {
 					funcFieldDi.StructName = selectorExpr.Sel.Name

@@ -62,10 +62,30 @@ func (v *visitor) handleAssignStmt(assignStmt *ast.AssignStmt) {
 			di.FullPkgName, di.StructName = v.curFullPkgName, ident.Name
 			compositeLit.Type = ast.NewIdent(v.dc.EditedStructName(di))
 		}
+	} else if callExpr, ok := rhs.(*ast.CallExpr); ok {
+		// Handle call to a function that returns a struct, like NewTrie()
+		if selectorExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
+			if ident, ok := selectorExpr.X.(*ast.Ident); ok {
+				fullPkgNameForCalledFunc := v.ic.GetFullPkgName(v.curFullPkgName, v.curFilepath, ident.Name)
+				calledFunc := v.dc.GetDecl(collector.DeclIdentifier{
+					FuncName:    selectorExpr.Sel.Name,
+					FullPkgName: fullPkgNameForCalledFunc,
+				})
+				if calledFunc != nil {
+					calledFuncCasted := calledFunc.(*ast.FuncDecl)
+					if calledFuncCasted.Type.Results != nil && len(calledFuncCasted.Type.Results.List) == 1 {
+						if returnType, ok := calledFuncCasted.Type.Results.List[0].Type.(*ast.Ident); ok {
+							di.FullPkgName = fullPkgNameForCalledFunc
+							di.StructName = returnType.Name
+						}
+					}
+				}
+			}
+		}
 	}
 
-	if di.StructName != "" {
-		v.result.Decls = append(v.result.Decls, v.dc.GetDecl(di))
+	if funcDecl := v.dc.GetDecl(di); funcDecl != nil {
+		v.result.Decls = append(v.result.Decls, funcDecl)
 	}
 	v.localVars[variableName] = di
 }

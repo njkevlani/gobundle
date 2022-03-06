@@ -23,6 +23,10 @@ type DeclIdentifier struct {
 	Filepath    string
 }
 
+func (di DeclIdentifier) DeclKey() string {
+	return fmt.Sprintf("%s_%s_%s", di.FullPkgName, di.StructName, di.FuncName)
+}
+
 type DeclCollector struct {
 	decls       map[string]ast.Decl
 	editedNames map[string]string
@@ -41,10 +45,6 @@ func NewDeclCollector() *DeclCollector {
 
 func (dc *DeclCollector) EditedFuncName(fi DeclIdentifier) string {
 	return dc.editedNames[fi.DeclKey()]
-}
-
-func (di DeclIdentifier) DeclKey() string {
-	return fmt.Sprintf("%s_%s_%s", di.FullPkgName, di.StructName, di.FuncName)
 }
 
 func (dc *DeclCollector) putEditedFuncName(fi DeclIdentifier, dt declType) {

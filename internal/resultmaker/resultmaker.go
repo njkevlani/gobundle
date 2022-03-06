@@ -160,8 +160,15 @@ func (v *visitor) handleCallerExpr(callExpr *ast.CallExpr) {
 			FullPkgName: v.curFullPkgName,
 		}
 
+		var funcDecl ast.Decl
+
+		if funcDecl = v.dc.GetDecl(di); funcDecl == nil {
+			return
+		}
+
 		ident.Name = v.dc.EditedFuncName(di)
-		if funcDecl := v.dc.GetDecl(di); funcDecl != nil && !v.doneDecl[di.DeclKey()] {
+
+		if !v.doneDecl[di.DeclKey()] {
 			// Add this function in result.
 			v.result.Decls = append(v.result.Decls, funcDecl)
 			v.doneDecl[di.DeclKey()] = true

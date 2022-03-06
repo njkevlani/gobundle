@@ -10,7 +10,7 @@ build:
 	go build -o bin/go_bundle cmd/go_bundle/main.go
 
 test:
-	go test ./...
+	go test $$(go list ./... | grep -v /test_files/)
 
 install: build-release
 	mkdir -p ${GOPATH}/bin

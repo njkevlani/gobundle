@@ -1,21 +1,24 @@
-name: Release
-
-on:
-  push:
-    tags:
-      - "v*.*.*"
-
+name: Workflow
+on: push
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: golang:1.18-bullseye
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Run tests
+        run: make test
+
   release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [ test ]
     runs-on: ubuntu-latest
     container: golang:1.18-bullseye
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v2
-
-      - name: Run tests
-        run: make test
 
       - name: Build
         run: make build-release

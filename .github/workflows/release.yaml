@@ -1,0 +1,26 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    container: golang:1.17-bullseye
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Run tests
+        run: make test
+
+      - name: Build
+        run: make build-release
+
+      - uses: ncipollo/release-action@v1
+        with:
+          artifacts: "./bin/gobundle"
+          token: ${{ secrets.GITHUB_TOKEN }}

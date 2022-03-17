@@ -1,4 +1,4 @@
-module github.com/njkevlani/go_bundle
+module github.com/njkevlani/gobundle
 
 go 1.17
 

@@ -1,4 +1,4 @@
-package go_bundle
+package gobundle
 
 import (
 	"fmt"

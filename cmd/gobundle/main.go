@@ -5,7 +5,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/njkevlani/go_bundle/internal/go_bundle"
+	"github.com/njkevlani/gobundle/internal/gobundle"
 )
 
 func main() {
@@ -15,13 +15,13 @@ func main() {
 
 	fileName := path.Clean(os.Args[1])
 
-	goimportedBytes, err := go_bundle.GoBundle(fileName)
+	goimportedBytes, err := gobundle.GoBundle(fileName)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	goimportedBytes = append([]byte("// Auto generated using https://github.com/njkevlani/go_bundle\n"), goimportedBytes...)
+	goimportedBytes = append([]byte("// Auto generated using https://github.com/njkevlani/gobundle\n"), goimportedBytes...)
 
 	err = os.MkdirAll("./build", os.ModePerm)
 	if err != nil {

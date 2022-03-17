@@ -10,7 +10,7 @@ import (
 )
 
 var isStdPkg = make(map[string]bool)
-var cacheFile = "/tmp/go_bundle_stdpkgdetector.gob"
+var cacheFile = "/tmp/gobundle_stdpkgdetector.gob"
 
 func init() {
 	err := readFromCache()

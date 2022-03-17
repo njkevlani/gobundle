@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/njkevlani/go_bundle/test_files/test_project5/compio"
-	"github.com/njkevlani/go_bundle/test_files/test_project5/permutation"
+	"github.com/njkevlani/gobundle/test_files/test_project5/compio"
+	"github.com/njkevlani/gobundle/test_files/test_project5/permutation"
 )
 
 func main() {

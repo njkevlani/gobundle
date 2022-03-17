@@ -3,9 +3,9 @@ package resultmaker
 import (
 	"go/ast"
 
-	"github.com/njkevlani/go_bundle/internal/builtinfuncdetector"
-	"github.com/njkevlani/go_bundle/internal/collector"
-	"github.com/njkevlani/go_bundle/internal/stdpkgdetector"
+	"github.com/njkevlani/gobundle/internal/builtinfuncdetector"
+	"github.com/njkevlani/gobundle/internal/collector"
+	"github.com/njkevlani/gobundle/internal/stdpkgdetector"
 )
 
 type visitor struct {

@@ -3,7 +3,7 @@ package algo
 import (
 	"fmt"
 
-	"github.com/njkevlani/go_bundle/test_files/test_project1/algo2"
+	"github.com/njkevlani/gobundle/test_files/test_project1/algo2"
 )
 
 func Sum(nums []int) int {

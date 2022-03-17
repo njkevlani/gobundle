@@ -1,4 +1,4 @@
-package go_bundle
+package gobundle
 
 import (
 	"bytes"
@@ -11,8 +11,8 @@ import (
 	"golang.org/x/tools/go/packages"
 	"golang.org/x/tools/imports"
 
-	"github.com/njkevlani/go_bundle/internal/collector"
-	"github.com/njkevlani/go_bundle/internal/resultmaker"
+	"github.com/njkevlani/gobundle/internal/collector"
+	"github.com/njkevlani/gobundle/internal/resultmaker"
 )
 
 func GoBundle(filepath string) ([]byte, error) {

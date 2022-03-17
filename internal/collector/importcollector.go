@@ -8,7 +8,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 
-	"github.com/njkevlani/go_bundle/internal/stdpkgdetector"
+	"github.com/njkevlani/gobundle/internal/stdpkgdetector"
 )
 
 type ImportCollector struct {

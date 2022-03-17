@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/njkevlani/go_bundle/test_files/test_project1/algo"
+	"github.com/njkevlani/gobundle/test_files/test_project1/algo"
 )
 
 func main() {

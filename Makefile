@@ -12,6 +12,5 @@ build:
 test:
 	go test $$(go list ./... | grep -v /test_files/)
 
-install: build-release
-	mkdir -p ${GOPATH}/bin
-	cp ./bin/gobundle ${GOPATH}/bin/
+install:
+	go install -ldflags "-s -w" ./cmd/gobundle

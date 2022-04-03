@@ -174,6 +174,7 @@ func (v *visitor) handleCallerExpr(callExpr *ast.CallExpr) {
 			v.doneDecl[di.DeclKey()] = true
 
 			localVars := v.localVars
+			curFilepath := v.curFilepath
 
 			v.localVars = make(map[string]collector.DeclIdentifier)
 			funcDeclCasted := funcDecl.(*ast.FuncDecl)
@@ -201,9 +202,12 @@ func (v *visitor) handleCallerExpr(callExpr *ast.CallExpr) {
 				}
 			}
 
+			v.curFilepath = v.dc.GetDeclFilepath(di)
+
 			// recursively process this function.
 			ast.Walk(v, funcDecl)
 
+			v.curFilepath = curFilepath
 			v.localVars = localVars
 		}
 	}

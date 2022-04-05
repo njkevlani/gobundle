@@ -49,7 +49,21 @@ func (ic *ImportCollector) GetNonStdNonProcessedImports(f *ast.File, fullPkgName
 				ic.fullPkgNames[fullPkgName][filepath][importSpec.Name.Name] = fullImportPath
 			} else {
 				pkgNameSplits := strings.Split(fullImportPath, "/")
-				ic.fullPkgNames[fullPkgName][filepath][pkgNameSplits[len(pkgNameSplits)-1]] = fullImportPath
+
+				shortPkgName := pkgNameSplits[len(pkgNameSplits)-1]
+
+				// TODO: This is not alway true.
+				// There are cases where this fails.
+				// eg: github.com/mattn/go-isatty and default package name is isatty
+				// Doing this hack for now, need to understand
+				//   1. How does this work?
+				//   2. What is proper way to do this?
+				//   3. If there are any other such similar cases.
+				if strings.HasPrefix(shortPkgName, "go-") {
+					shortPkgName = shortPkgName[3:]
+				}
+
+				ic.fullPkgNames[fullPkgName][filepath][shortPkgName] = fullImportPath
 			}
 
 			if !stdpkgdetector.IsStdPkg(fullImportPath) && !ic.importProcessed[fullImportPath] {

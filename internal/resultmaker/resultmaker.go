@@ -61,6 +61,11 @@ func (v *visitor) handleAssignStmt(assignStmt *ast.AssignStmt) {
 		if ident, ok := compositeLit.Type.(*ast.Ident); ok {
 			di.FullPkgName, di.StructName = v.curFullPkgName, ident.Name
 			compositeLit.Type = ast.NewIdent(v.dc.EditedStructName(di))
+		} else if arrayType, ok := compositeLit.Type.(*ast.ArrayType); ok {
+			// Handle calls like g := []node{}
+			if ident, ok := arrayType.Elt.(*ast.Ident); ok {
+				di.FullPkgName, di.StructName = v.curFullPkgName, ident.Name
+			}
 		}
 	} else if callExpr, ok := rhs.(*ast.CallExpr); ok {
 		// Handle call to a function that returns a struct, like NewTrie()

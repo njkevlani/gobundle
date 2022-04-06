@@ -38,7 +38,7 @@ func (v *visitor) handleDeclStmt(declStmt *ast.DeclStmt) {
 		variableNames []string
 	)
 
-	// Handle calls like g := []node{}
+	// Handle calls like var g []node}
 	if genDecl, ok := declStmt.Decl.(*ast.GenDecl); ok && len(genDecl.Specs) == 1 {
 		if valueSepc, ok := genDecl.Specs[0].(*ast.ValueSpec); ok {
 			if arrayType, ok := valueSepc.Type.(*ast.ArrayType); ok {

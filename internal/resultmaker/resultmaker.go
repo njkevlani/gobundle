@@ -24,10 +24,42 @@ func (v visitor) Visit(n ast.Node) ast.Visitor {
 			v.handleAssignStmt(assignStmt)
 		} else if callExpr, ok := n.(*ast.CallExpr); ok {
 			v.handleCallerExpr(callExpr)
+		} else if declStmt, ok := n.(*ast.DeclStmt); ok {
+			v.handleDeclStmt(declStmt)
 		}
 	}
 
 	return v
+}
+
+func (v *visitor) handleDeclStmt(declStmt *ast.DeclStmt) {
+	var (
+		di            collector.DeclIdentifier
+		variableNames []string
+	)
+
+	// Handle calls like g := []node{}
+	if genDecl, ok := declStmt.Decl.(*ast.GenDecl); ok && len(genDecl.Specs) == 1 {
+		if valueSepc, ok := genDecl.Specs[0].(*ast.ValueSpec); ok {
+			if arrayType, ok := valueSepc.Type.(*ast.ArrayType); ok {
+				if ident, ok := arrayType.Elt.(*ast.Ident); ok {
+					di.FullPkgName, di.StructName = v.curFullPkgName, ident.Name
+					for _, name := range valueSepc.Names {
+						variableNames = append(variableNames, name.Name)
+					}
+				}
+			}
+		}
+
+	}
+
+	if funcDecl := v.dc.GetDecl(di); funcDecl != nil {
+		v.result.Decls = append(v.result.Decls, funcDecl)
+	}
+
+	for _, variableName := range variableNames {
+		v.localVars[variableName] = di
+	}
 }
 
 func (v *visitor) handleAssignStmt(assignStmt *ast.AssignStmt) {

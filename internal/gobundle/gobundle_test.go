@@ -60,6 +60,11 @@ func TestGoBundle(t *testing.T) {
 			inputFilePath:          "../../test_files/test_project8/main.go",
 			expectedOutputFilePath: "../../test_files/expected_output8/main.go",
 		},
+		{
+			name:                   "test_project9",
+			inputFilePath:          "../../test_files/test_project9/main.go",
+			expectedOutputFilePath: "../../test_files/expected_output9/main.go",
+		},
 	}
 
 	for _, testcase := range testcases {

@@ -50,7 +50,6 @@ func (v *visitor) handleDeclStmt(declStmt *ast.DeclStmt) {
 				}
 			}
 		}
-
 	}
 
 	if funcDecl := v.dc.GetDecl(di); funcDecl != nil {

@@ -38,10 +38,10 @@ func (v *visitor) handleDeclStmt(declStmt *ast.DeclStmt) {
 		variableNames []string
 	)
 
-	// Handle calls like var g []node}
 	if genDecl, ok := declStmt.Decl.(*ast.GenDecl); ok && len(genDecl.Specs) == 1 {
 		if valueSepc, ok := genDecl.Specs[0].(*ast.ValueSpec); ok {
 			if arrayType, ok := valueSepc.Type.(*ast.ArrayType); ok {
+				// Handle calls like `var g []node{}`
 				if ident, ok := arrayType.Elt.(*ast.Ident); ok {
 					di.FullPkgName, di.StructName = v.curFullPkgName, ident.Name
 					for _, name := range valueSepc.Names {
@@ -49,11 +49,13 @@ func (v *visitor) handleDeclStmt(declStmt *ast.DeclStmt) {
 					}
 				}
 			} else if ident, ok := valueSepc.Type.(*ast.Ident); ok {
+				// Handle calls like `var g node{}`
 				di.FullPkgName, di.StructName = v.curFullPkgName, ident.Name
 				for _, name := range valueSepc.Names {
 					variableNames = append(variableNames, name.Name)
 				}
 			} else if selectorExpr, ok := valueSepc.Type.(*ast.SelectorExpr); ok {
+				// Handle calls like `var g ds.Node{}`
 				if pkgIdent, ok := selectorExpr.X.(*ast.Ident); ok {
 					pkgName := pkgIdent.Name
 					structName := selectorExpr.Sel.Name

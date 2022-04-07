@@ -48,6 +48,11 @@ func (v *visitor) handleDeclStmt(declStmt *ast.DeclStmt) {
 						variableNames = append(variableNames, name.Name)
 					}
 				}
+			} else if ident, ok := valueSepc.Type.(*ast.Ident); ok {
+				di.FullPkgName, di.StructName = v.curFullPkgName, ident.Name
+				for _, name := range valueSepc.Names {
+					variableNames = append(variableNames, name.Name)
+				}
 			}
 		}
 	}

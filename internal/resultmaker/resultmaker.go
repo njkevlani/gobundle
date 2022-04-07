@@ -52,8 +52,9 @@ func (v *visitor) handleDeclStmt(declStmt *ast.DeclStmt) {
 		}
 	}
 
-	if funcDecl := v.dc.GetDecl(di); funcDecl != nil {
+	if funcDecl := v.dc.GetDecl(di); funcDecl != nil && !v.doneDecl[di.DeclKey()] {
 		v.result.Decls = append(v.result.Decls, funcDecl)
+		v.doneDecl[di.DeclKey()] = true
 	}
 
 	for _, variableName := range variableNames {
@@ -120,8 +121,9 @@ func (v *visitor) handleAssignStmt(assignStmt *ast.AssignStmt) {
 		}
 	}
 
-	if funcDecl := v.dc.GetDecl(di); funcDecl != nil {
+	if funcDecl := v.dc.GetDecl(di); funcDecl != nil && !v.doneDecl[di.DeclKey()] {
 		v.result.Decls = append(v.result.Decls, funcDecl)
+		v.doneDecl[di.DeclKey()] = true
 	}
 	v.localVars[variableName] = di
 }

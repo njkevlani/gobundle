@@ -41,7 +41,6 @@ func (v *visitor) handleDeclStmt(declStmt *ast.DeclStmt) {
 	// Handle calls like var g []node}
 	if genDecl, ok := declStmt.Decl.(*ast.GenDecl); ok && len(genDecl.Specs) == 1 {
 		if valueSepc, ok := genDecl.Specs[0].(*ast.ValueSpec); ok {
-			// TODO: Fix: this will not work for structs from different packages, like var t trie.Trie
 			if arrayType, ok := valueSepc.Type.(*ast.ArrayType); ok {
 				if ident, ok := arrayType.Elt.(*ast.Ident); ok {
 					di.FullPkgName, di.StructName = v.curFullPkgName, ident.Name

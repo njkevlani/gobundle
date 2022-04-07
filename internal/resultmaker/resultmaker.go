@@ -38,7 +38,7 @@ func (v *visitor) handleDeclStmt(declStmt *ast.DeclStmt) {
 		variableNames []string
 	)
 
-	// Handle calls like g := []node{}
+	// Handle calls like var g []node}
 	if genDecl, ok := declStmt.Decl.(*ast.GenDecl); ok && len(genDecl.Specs) == 1 {
 		if valueSepc, ok := genDecl.Specs[0].(*ast.ValueSpec); ok {
 			if arrayType, ok := valueSepc.Type.(*ast.ArrayType); ok {
@@ -52,8 +52,9 @@ func (v *visitor) handleDeclStmt(declStmt *ast.DeclStmt) {
 		}
 	}
 
-	if funcDecl := v.dc.GetDecl(di); funcDecl != nil {
+	if funcDecl := v.dc.GetDecl(di); funcDecl != nil && !v.doneDecl[di.DeclKey()] {
 		v.result.Decls = append(v.result.Decls, funcDecl)
+		v.doneDecl[di.DeclKey()] = true
 	}
 
 	for _, variableName := range variableNames {
@@ -120,8 +121,9 @@ func (v *visitor) handleAssignStmt(assignStmt *ast.AssignStmt) {
 		}
 	}
 
-	if funcDecl := v.dc.GetDecl(di); funcDecl != nil {
+	if funcDecl := v.dc.GetDecl(di); funcDecl != nil && !v.doneDecl[di.DeclKey()] {
 		v.result.Decls = append(v.result.Decls, funcDecl)
+		v.doneDecl[di.DeclKey()] = true
 	}
 	v.localVars[variableName] = di
 }

@@ -41,6 +41,7 @@ func (v *visitor) handleDeclStmt(declStmt *ast.DeclStmt) {
 	// Handle calls like var g []node}
 	if genDecl, ok := declStmt.Decl.(*ast.GenDecl); ok && len(genDecl.Specs) == 1 {
 		if valueSepc, ok := genDecl.Specs[0].(*ast.ValueSpec); ok {
+			// TODO: Fix: this will not work for structs from different packages, like var t trie.Trie
 			if arrayType, ok := valueSepc.Type.(*ast.ArrayType); ok {
 				if ident, ok := arrayType.Elt.(*ast.Ident); ok {
 					di.FullPkgName, di.StructName = v.curFullPkgName, ident.Name
@@ -50,6 +51,16 @@ func (v *visitor) handleDeclStmt(declStmt *ast.DeclStmt) {
 				}
 			} else if ident, ok := valueSepc.Type.(*ast.Ident); ok {
 				di.FullPkgName, di.StructName = v.curFullPkgName, ident.Name
+				for _, name := range valueSepc.Names {
+					variableNames = append(variableNames, name.Name)
+				}
+			} else if selectorExpr, ok := valueSepc.Type.(*ast.SelectorExpr); ok {
+				if pkgIdent, ok := selectorExpr.X.(*ast.Ident); ok {
+					pkgName := pkgIdent.Name
+					structName := selectorExpr.Sel.Name
+					di.FullPkgName, di.StructName = v.ic.GetFullPkgName(v.curFullPkgName, v.curFilepath, pkgName), structName
+					valueSepc.Type = ast.NewIdent(v.dc.EditedStructName(di))
+				}
 				for _, name := range valueSepc.Names {
 					variableNames = append(variableNames, name.Name)
 				}

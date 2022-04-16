@@ -19,11 +19,6 @@ type BST struct {
 	Right *BST
 }
 
-func addInBst(bsTreeFuncParam *BST, arr []int) {
-	for _, el := range arr {
-		bsTreeFuncParam.Add(el)
-	}
-}
 func (bst *BST) Add(val int) {
 	if bst.Value >= val {
 		if bst.Left == nil {
@@ -48,6 +43,11 @@ func (bst BST) Has(val int) bool {
 		return bst.Right.Has(val)
 	}
 	return false
+}
+func addInBst(bsTreeFuncParam *BST, arr []int) {
+	for _, el := range arr {
+		bsTreeFuncParam.Add(el)
+	}
 }
 func printBst(bsTreeFuncParam BST) {
 	fmt.Println(bsTreeFuncParam)

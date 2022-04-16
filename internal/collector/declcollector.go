@@ -27,19 +27,25 @@ func (di DeclIdentifier) DeclKey() string {
 	return fmt.Sprintf("%s_%s_%s", di.FullPkgName, di.StructName, di.FuncName)
 }
 
+func (di DeclIdentifier) structKey() string {
+	return fmt.Sprintf("%s_%s", di.FullPkgName, di.StructName)
+}
+
 type DeclCollector struct {
-	decls       map[string]ast.Decl
-	editedNames map[string]string
-	usedNames   map[string]bool
-	declFileMap map[string]string
+	decls                     map[string]ast.Decl
+	editedNames               map[string]string
+	usedNames                 map[string]bool
+	declFileMap               map[string]string
+	structFuncDeclIdentifiers map[string][]DeclIdentifier
 }
 
 func NewDeclCollector() *DeclCollector {
 	return &DeclCollector{
-		decls:       make(map[string]ast.Decl),
-		editedNames: make(map[string]string),
-		usedNames:   make(map[string]bool),
-		declFileMap: make(map[string]string),
+		decls:                     make(map[string]ast.Decl),
+		editedNames:               make(map[string]string),
+		usedNames:                 make(map[string]bool),
+		declFileMap:               make(map[string]string),
+		structFuncDeclIdentifiers: make(map[string][]DeclIdentifier),
 	}
 }
 
@@ -96,10 +102,14 @@ func (fv funcDeclCollectorVisitor) Visit(n ast.Node) ast.Visitor {
 					if ident, ok := starExpr.X.(*ast.Ident); ok {
 						di.StructName = ident.Name
 						dt = funcOnStructType
+
+						fv.c.structFuncDeclIdentifiers[di.structKey()] = append(fv.c.structFuncDeclIdentifiers[di.structKey()], di)
 					}
 				} else if ident, ok := receiver.Type.(*ast.Ident); ok {
 					di.StructName = ident.Name
 					dt = funcOnStructType
+
+					fv.c.structFuncDeclIdentifiers[di.structKey()] = append(fv.c.structFuncDeclIdentifiers[di.structKey()], di)
 				}
 			}
 
@@ -139,6 +149,10 @@ func (dc *DeclCollector) GetDeclFilepath(di DeclIdentifier) string {
 	return dc.declFileMap[di.DeclKey()]
 }
 
+func (dc *DeclCollector) GetStructFuncDeclIdentifiers(di DeclIdentifier) []DeclIdentifier {
+	return dc.structFuncDeclIdentifiers[di.structKey()]
+}
+
 func (dc *DeclCollector) Debug() {
 	fmt.Println("editedNames:")
 	spew.Dump(dc.editedNames)
@@ -150,4 +164,7 @@ func (dc *DeclCollector) Debug() {
 	for key := range dc.decls {
 		fmt.Println(key)
 	}
+
+	fmt.Println("structFuncDeclIdentifiers:")
+	spew.Dump(dc.structFuncDeclIdentifiers)
 }

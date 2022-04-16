@@ -11,9 +11,6 @@ func main() {
 
 type Trie struct{ Next map[rune]Trie }
 
-func NewTrie() Trie {
-	return Trie{Next: make(map[rune]Trie)}
-}
 func (t Trie) Add(word string) {
 	cur := t
 	for _, ch := range word {
@@ -35,4 +32,7 @@ func (t Trie) Has(word string) bool {
 	}
 	_, endsHere := cur.Next['$']
 	return endsHere
+}
+func NewTrie() Trie {
+	return Trie{Next: make(map[rune]Trie)}
 }

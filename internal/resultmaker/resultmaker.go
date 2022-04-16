@@ -326,6 +326,5 @@ func MakeResult(res *ast.File, mainFunc *ast.FuncDecl, ic *collector.ImportColle
 		ic:             ic,
 		dc:             dc,
 	}
-
 	ast.Walk(v, mainFunc)
 }

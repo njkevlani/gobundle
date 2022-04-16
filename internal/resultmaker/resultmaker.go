@@ -71,6 +71,7 @@ func (v *visitor) handleDeclStmt(declStmt *ast.DeclStmt) {
 
 	if funcDecl := v.dc.GetDecl(di); funcDecl != nil && !v.doneDecl[di.DeclKey()] {
 		v.result.Decls = append(v.result.Decls, funcDecl)
+		v.addAllStrctMethods(di)
 		v.doneDecl[di.DeclKey()] = true
 	}
 
@@ -140,6 +141,7 @@ func (v *visitor) handleAssignStmt(assignStmt *ast.AssignStmt) {
 
 	if funcDecl := v.dc.GetDecl(di); funcDecl != nil && !v.doneDecl[di.DeclKey()] {
 		v.result.Decls = append(v.result.Decls, funcDecl)
+		v.addAllStrctMethods(di)
 		v.doneDecl[di.DeclKey()] = true
 	}
 	v.localVars[variableName] = di
@@ -268,6 +270,53 @@ func (v *visitor) handleCallerExpr(callExpr *ast.CallExpr) {
 	}
 }
 
+func (v visitor) addAllStrctMethods(structDI collector.DeclIdentifier) {
+	structFuncDeclIdentifiers := v.dc.GetStructFuncDeclIdentifiers(structDI)
+
+	for _, structFuncDI := range structFuncDeclIdentifiers {
+		// todo: see if this can be reduced.
+		structFuncDecl := v.dc.GetDecl(structFuncDI).(*ast.FuncDecl)
+		v.result.Decls = append(v.result.Decls, structFuncDecl)
+		v.doneDecl[structFuncDI.DeclKey()] = true
+
+		localVars := v.localVars
+		curFilepath := v.curFilepath
+
+		v.localVars = make(map[string]collector.DeclIdentifier)
+		for _, field := range structFuncDecl.Type.Params.List {
+			var funcFieldDi collector.DeclIdentifier
+			if starExpr, ok := field.Type.(*ast.StarExpr); ok {
+				if selectorExpr, ok := starExpr.X.(*ast.SelectorExpr); ok {
+					funcFieldDi.StructName = selectorExpr.Sel.Name
+					if ident, ok := selectorExpr.X.(*ast.Ident); ok {
+						funcFieldDi.FullPkgName = v.ic.GetFullPkgName(v.curFullPkgName, v.curFilepath, ident.Name)
+						if !stdpkgdetector.IsStdPkg(funcFieldDi.FullPkgName) {
+							starExpr.X = ast.NewIdent(v.dc.EditedStructName(funcFieldDi))
+						}
+					}
+				}
+			} else if selectorExpr, ok := field.Type.(*ast.SelectorExpr); ok {
+				funcFieldDi.StructName = selectorExpr.Sel.Name
+				if ident, ok := selectorExpr.X.(*ast.Ident); ok {
+					funcFieldDi.FullPkgName = v.ic.GetFullPkgName(v.curFullPkgName, v.curFilepath, ident.Name)
+				}
+				field.Type = ast.NewIdent(v.dc.EditedStructName(funcFieldDi))
+			}
+			for _, varNameIdent := range field.Names {
+				v.localVars[varNameIdent.Name] = funcFieldDi
+			}
+		}
+
+		v.curFilepath = v.dc.GetDeclFilepath(structFuncDI)
+
+		// recursively process this function.
+		ast.Walk(v, structFuncDecl)
+
+		v.curFilepath = curFilepath
+		v.localVars = localVars
+	}
+}
+
 func MakeResult(res *ast.File, mainFunc *ast.FuncDecl, ic *collector.ImportCollector, dc *collector.DeclCollector, inFilePkg, inFilepath string) {
 	v := visitor{
 		result:         res,
@@ -278,5 +327,6 @@ func MakeResult(res *ast.File, mainFunc *ast.FuncDecl, ic *collector.ImportColle
 		ic:             ic,
 		dc:             dc,
 	}
+
 	ast.Walk(v, mainFunc)
 }

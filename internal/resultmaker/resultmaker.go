@@ -274,7 +274,6 @@ func (v visitor) addAllStrctMethods(structDI collector.DeclIdentifier) {
 	structFuncDeclIdentifiers := v.dc.GetStructFuncDeclIdentifiers(structDI)
 
 	for _, structFuncDI := range structFuncDeclIdentifiers {
-		// todo: see if this can be reduced.
 		structFuncDecl := v.dc.GetDecl(structFuncDI).(*ast.FuncDecl)
 		v.result.Decls = append(v.result.Decls, structFuncDecl)
 		v.doneDecl[structFuncDI.DeclKey()] = true
